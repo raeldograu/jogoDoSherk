@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Jogo da Memória - Shrek</title>
+  <style>
+   :root {
+    --bg-color: #7BAE7F;
+    --primary: #5B8C5A;
+    --secondary: #3E5C3A;
+    --button-bg: #fff;
+    --button-border: #4D774E;
+    --button-hover: #DFF2D8;
+    --text-color: #fff;
+  }
+
+  body {
+    background-color: var(--bg-color);
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+  }
+
+  h1 {
+    color: var(--text-color);
+    text-shadow: 1px 1px 3px #444;
+    text-align: center;
+    margin-top: 120px; /* dá espaço por causa do menu fixo */
+  }
+
+  /* MENU FIXO NO TOPO */
+  .menu {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    background: rgba(0,0,0,0.7);
+    padding: 15px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 15px;
+    z-index: 1000;
+    backdrop-filter: blur(6px);
+  }
+
+  /* Botões estilos diferenciados */
+  .menu button, .menu span {
+    padding: 10px 20px;
+    font-size: 16px;
+    font-weight: bold;
+    color: white;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: transform 0.3s, box-shadow 0.3s;
+    text-shadow: 1px 1px 3px #000;
+  }
+
+  .menu button:hover, .menu span:hover {
+    transform: scale(1.1);
+    box-shadow: 0px 0px 20px rgba(255,255,255,0.8);
+  }
+
+  /* Cada botão com cor diferente */
+  .menu button:nth-child(1) { background: linear-gradient(45deg, #ff416c, #ff4b2b); }
+  .menu button:nth-child(2) { background: linear-gradient(45deg, #1e90ff, #00bfff); }
+  .menu button:nth-child(3) { background: linear-gradient(45deg, #32cd32, #228b22); }
+  .menu button:nth-child(4) { background: linear-gradient(45deg, #8a2be2, #4b0082); }
+  .menu button:nth-child(5) { background: linear-gradient(45deg, #ffd700, #ffa500); }
+
+  /* Nível */
+  #nivel {
+    background: linear-gradient(45deg, #ffa500, #ff8c00);
+    color: #fff;
+  }
+
+  /* Erros */
+  #erros {
+    font-size: 20px;
+    font-weight: bold;
+    color: #ff4444;
+    background: #fff;
+    padding: 8px 16px;
+    border: 3px solid #cc0000;
+    border-radius: 10px;
+    box-shadow: 0px 0px 10px rgba(255, 0, 0, 0.7);
+    animation: pulse 1s infinite alternate;
+  }
+
+  @keyframes pulse {
+    from { transform: scale(1); }
+    to { transform: scale(1.1); }
+  }
+
+  .memory-game {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+      gap: 10px;
+      background: rgba(0, 0, 0, 0.2);
+      padding: 15px;
+      border-radius: 10px;
+      margin: auto;
+      width: fit-content;
+      height: auto;
+    }
+
+    .memory-card {
+      width: 120px;
+      height: 120px;
+      perspective: 1000px;
+      cursor: pointer;
+      transition: transform 0.5s ease;
+    }
+
+    .card-inner {
+      width: 100%;
+      height: 100%;
+      position: relative;
+      transform-style: preserve-3d;
+      transition: transform 0.6s ease;
+    }
+
+    .memory-card.flip .card-inner {
+      transform: rotateY(180deg);
+    }
+
+    .card-face {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      border-radius: 8px;
+      backface-visibility: hidden;
+      object-fit: cover;
+    }
+
+    .front-face { transform: rotateY(180deg); }
+    .back-face { border: 2px solid var(--secondary); background: #222; }
+
+    /* TELA DE PARABÉNS */
+    #winScreen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.9);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 999;
+      flex-direction: column;
+      display: none;
+    }
+
+    #winScreen img {
+      max-width: 80%;
+      border-radius: 15px;
+      box-shadow: 0px 0px 25px #fff;
+    }
+
+    #winScreen button {
+      margin-top: 20px;
+      font-size: 20px;
+      background: #fff;
+      color: #000;
+      font-weight: bold;
+      padding: 15px 30px;
+      border-radius: 12px;
+      border: 3px solid #444;
+      cursor: pointer;
+    }
+
+    #winScreen button:hover { background: #ddd; }
+  </style>
+</head>
+<body>
+
+  <!-- MENU FIXO -->
+  <div class="menu">
+    <button onclick="restartGame()">Reiniciar</button>
+    <button onclick="changeCardBack()">Mudar fundo</button>
+    <button onclick="changeTheme()">Trocar Tema</button>
+    <button onclick="shuffleBoard()">Embaralhar</button>
+    <button onclick="showAllCards()">Mostrar Todas</button>
+    <span id="nivel" onclick="chooseLevel()">Nível: 1</span> 
+    <span id="erros">Erros: 0</span>
+  </div>
+
+  <h1>Jogo da Memória</h1>
+  <div class="memory-game" id="gameBoard"></div>
+
+  <!-- TELA DE PARABÉNS -->
+  <div id="winScreen">
+    <img src="parabens.jpg" alt="Parabéns você ganhou Momos!">
+    <button onclick="closeWinScreen()">Jogar Novamente</button>
+  </div>
+
+  <script>
+    const allImages = [
+      "sherk1.webp","sherk2.jpg","sherk3.jpg","sherk4.jpg",
+      "sherk5.jpg","sherk6.jpg","sherk7.jpeg","sherk8.jpg",
+      "sherk9.jpg","sherk10.jpg","sherk11.jpg","sherk12.jpg",
+      "sherk13.jpg","sherk14.jpg","sherk15.jpg","sherk16.jpg",
+      "sherk17.jpg","sherk18.jpeg"
+    ];
+
+    const cardBacks = ["fundo.jpg","fundo2.avif","fundo3.avif","fundo4.avif","fundo5.webp"];
+
+    let level = 1;
+    let hasFlippedCard = false;
+    let lockBoard = false;
+    let firstCard, secondCard;
+    let matches = 0;
+    let erros = 0;
+
+    const gameBoard = document.getElementById('gameBoard');
+    const nivelText = document.getElementById('nivel');
+    const errosText = document.getElementById('erros');
+    const winScreen = document.getElementById('winScreen');
+
+    let currentBackIndex = 0;
+    const themes = [
+      { bg: "#7BAE7F", primary: "#5B8C5A", secondary: "#3E5C3A", border: "#4D774E", hover: "#DFF2D8" },
+      { bg: "#7BAEDC", primary: "#5A8CBB", secondary: "#3A5C7A", border: "#2A4C6E", hover: "#D8E9F2" },
+      { bg: "#DC7B7B", primary: "#BB5A5A", secondary: "#7A3A3A", border: "#6E2A2A", hover: "#F2D8D8" },
+      { bg: "#DC7BBC", primary: "#BB5A9A", secondary: "#7A3A6A", border: "#6E2A56", hover: "#F2D8EC" },
+      { bg: "#9B7BDC", primary: "#7A5ABB", secondary: "#4A3A7A", border: "#3A2A6E", hover: "#E5D8F2" }
+    ];
+    let currentTheme = 0;
+
+    function changeTheme() {
+      currentTheme = (currentTheme + 1) % themes.length;
+      const theme = themes[currentTheme];
+      document.documentElement.style.setProperty("--bg-color", theme.bg);
+      document.documentElement.style.setProperty("--primary", theme.primary);
+      document.documentElement.style.setProperty("--secondary", theme.secondary);
+      document.documentElement.style.setProperty("--button-border", theme.border);
+      document.documentElement.style.setProperty("--button-hover", theme.hover);
+    }
+
+    function createBoard() {
+      gameBoard.innerHTML = "";
+      hasFlippedCard = false;
+      lockBoard = false;
+      firstCard = null;
+      secondCard = null;
+      matches = 0;
+      erros = 0;
+
+      let numPairs = Math.min(4 + (level - 1) * 2, allImages.length);
+      let selectedImages = allImages.slice(0, numPairs);
+      let cards = [...selectedImages, ...selectedImages];
+      cards.sort(() => 0.5 - Math.random());
+
+      let cols = Math.ceil(Math.sqrt(cards.length));
+      gameBoard.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+
+      cards.forEach(src => {
+        const card = document.createElement('div');
+        card.classList.add('memory-card');
+        card.innerHTML = `
+          <div class="card-inner">
+            <img class="card-face front-face" src="${src}" alt="Imagem do Shrek">
+            <img class="card-face back-face" src="${cardBacks[currentBackIndex]}" alt="Verso da carta">
+          </div>
+        `;
+        card.addEventListener('click', flipCard);
+        gameBoard.appendChild(card);
+      });
+
+      updateHUD();
+    }
+
+    function flipCard() {
+      if (lockBoard || this === firstCard) return;
+      this.classList.add('flip');
+
+      if (!hasFlippedCard) {
+        hasFlippedCard = true;
+        firstCard = this;
+        return;
+      }
+
+      secondCard = this;
+      checkForMatch();
+    }
+
+    function checkForMatch() {
+      const isMatch =
+        firstCard.querySelector('.front-face').src ===
+        secondCard.querySelector('.front-face').src;
+
+      if (isMatch) {
+        disableCards();
+        matches++;
+        const totalMatches = gameBoard.childElementCount / 2;
+        if (matches === totalMatches) {
+          setTimeout(() => {
+            if (level === 9) {
+              winScreen.style.display = "flex";
+            } else {
+              alert(`Parabéns! Avançando para o nível ${level + 1}`);
+              level++;
+              createBoard();
+            }
+          }, 500);
+        }
+      } else {
+        erros++;
+        updateHUD();
+        unflipCards();
+      }
+    }
+
+    function disableCards() {
+      firstCard.removeEventListener('click', flipCard);
+      secondCard.removeEventListener('click', flipCard);
+      resetBoard();
+    }
+
+    function unflipCards() {
+      lockBoard = true;
+      setTimeout(() => {
+        firstCard.classList.remove('flip');
+        secondCard.classList.remove('flip');
+        resetBoard();
+      }, 1000);
+    }
+
+    function resetBoard() {
+      [hasFlippedCard, lockBoard] = [false, false];
+      [firstCard, secondCard] = [null, null];
+    }
+
+    function restartGame() {
+      level = 1;
+      winScreen.style.display = "none";
+      createBoard();
+    }
+
+    function changeCardBack() {
+      currentBackIndex = (currentBackIndex + 1) % cardBacks.length;
+      const allBacks = document.querySelectorAll('.back-face');
+      allBacks.forEach(card => {
+        card.src = cardBacks[currentBackIndex];
+      });
+    }
+
+    function chooseLevel() {
+      let maxLevel = Math.floor(allImages.length / 2);
+      let chosen = parseInt(prompt("Digite o nível que deseja jogar (1 até " + maxLevel + "):"), 10);
+      if (!isNaN(chosen) && chosen >= 1 && chosen <= maxLevel) {
+        level = chosen;
+        createBoard();
+      } else {
+        alert("Nível inválido!");
+      }
+    }
+
+    function updateHUD() {
+      nivelText.textContent = `Nível: ${level}`;
+      errosText.textContent = `Erros: ${erros}`;
+    }
+
+    function closeWinScreen() {
+      restartGame();
+    }
+
+    // Botão "Embaralhar"
+    function shuffleBoard() {
+      const cards = Array.from(gameBoard.children);
+      const shuffled = cards.sort(() => 0.5 - Math.random());
+
+      cards.forEach(card => {
+        card.style.transform = "rotate(15deg)";
+        setTimeout(() => card.style.transform = "rotate(-15deg)", 150);
+        setTimeout(() => card.style.transform = "rotate(0deg)", 300);
+      });
+
+      shuffled.forEach(card => gameBoard.appendChild(card));
+    }
+
+    // Botão "Mostrar Todas" (só depois de 10 erros)
+    function showAllCards() {
+      if (erros < 10) {
+        alert("Você precisa ter pelo menos 10 erros para usar esta ajuda!");
+        return;
+      }
+      const allCards = document.querySelectorAll('.memory-card');
+      allCards.forEach(card => card.classList.add('flip'));
+
+      setTimeout(() => {
+        allCards.forEach(card => {
+          if (!card.classList.contains('matched')) {
+            card.classList.remove('flip');
+          }
+        });
+      }, 2000); // mostra por 2 segundos
+    }
+
+    createBoard();
+  </script>
+</body>
+</html>
