@@ -171,6 +171,7 @@
       border: 3px solid #444;
       cursor: pointer;
     }
+    .top-bar { position: fixed; top: 80px; width: 100%; display: flex; justify-content: center; gap: 15px; padding: 10px; z-index: 999; } .hud-box { background: rgba(255,255,255,0.15); padding: 10px 15px; border-radius: 10px; font-weight: bold; color: white; backdrop-filter: blur(8px); } .memory-game { margin-top: 190px; background: rgba(255,255,255,0.08); backdrop-filter: blur(10px); border-radius: 18px; padding: 20px; } .memory-card:hover { transform: scale(1.05); }
 
     #winScreen button:hover { background: #ddd; }
   </style>
@@ -187,7 +188,7 @@
     <span id="nivel" onclick="chooseLevel()">Nível: 1</span> 
     <span id="erros">Erros: 0</span>
   </div>
-
+<div class="top-bar"> <div class="hud-box" id="score">Pontuação: 0</div> <div class="hud-box" id="timer">Tempo: 60</div> <div class="hud-box" id="record">Recorde: 0</div> <button onclick="toggleHardcoreMode()">🔥 Hardcore</button> <button onclick="activateHint()">💡 Dica</button> </div>
   <h1>Jogo da Memória</h1>
   <div class="memory-game" id="gameBoard"></div>
 
@@ -214,6 +215,7 @@
     let firstCard, secondCard;
     let matches = 0;
     let erros = 0;
+    let score = 0; let timer = 60; let hardcoreMode = false; let timerInterval; let hintUsed = false;
 
     const gameBoard = document.getElementById('gameBoard');
     const nivelText = document.getElementById('nivel');
@@ -272,7 +274,7 @@
 
       updateHUD();
     }
-
+function updateScore(points) { score += points; if (score < 0) score = 0; document.getElementById("score").textContent = `Pontuação: ${score}`; } function startTimer() { clearInterval(timerInterval); timer = hardcoreMode ? 30 : 60; document.getElementById("timer").textContent = `Tempo: ${timer}`; timerInterval = setInterval(() => { timer--; document.getElementById("timer").textContent = `Tempo: ${timer}`; if (timer <= 0) { clearInterval(timerInterval); alert("⏰ Tempo esgotado!"); restartGame(); } }, 1000); } function toggleHardcoreMode() { hardcoreMode = !hardcoreMode; alert( hardcoreMode ? "🔥 Hardcore ativado! Tempo reduzido." : "😌 Modo normal ativado." ); restartGame(); } function activateHint() { if (hintUsed) { alert("Você já usou sua dica nesta fase!"); return; } hintUsed = true; const allCards = document.querySelectorAll('.memory-card'); allCards.forEach(card => card.classList.add('flip')); setTimeout(() => { allCards.forEach(card => { if (!card.classList.contains('matched')) { card.classList.remove('flip'); } }); }, 1500); } function saveRecord() { let record = localStorage.getItem("recordeMemoria") || 0; if (score > record) { localStorage.setItem("recordeMemoria", score); } document.getElementById("record").textContent = `Recorde: ${localStorage.getItem("recordeMemoria")}`; } function loadRecord() { let record = localStorage.getItem("recordeMemoria") || 0; document.getElementById("record").textContent = `Recorde: ${record}`; }
     function flipCard() {
       if (lockBoard || this === firstCard) return;
       this.classList.add('flip');
@@ -287,33 +289,7 @@
       checkForMatch();
     }
 
-    function checkForMatch() {
-      const isMatch =
-        firstCard.querySelector('.front-face').src ===
-        secondCard.querySelector('.front-face').src;
-
-      if (isMatch) {
-        disableCards();
-        matches++;
-        const totalMatches = gameBoard.childElementCount / 2;
-        if (matches === totalMatches) {
-          setTimeout(() => {
-            if (level === 9) {
-              winScreen.style.display = "flex";
-            } else {
-              alert(`Parabéns! Avançando para o nível ${level + 1}`);
-              level++;
-              createBoard();
-            }
-          }, 500);
-        }
-      } else {
-        erros++;
-        updateHUD();
-        unflipCards();
-      }
-    }
-
+function checkForMatch() { const isMatch = firstCard.querySelector('.front-face').src === secondCard.querySelector('.front-face').src; if (isMatch) { updateScore(hardcoreMode ? 20 : 10); firstCard.classList.add("matched"); secondCard.classList.add("matched"); disableCards(); matches++; const totalMatches = gameBoard.childElementCount / 2; if (matches === totalMatches) { clearInterval(timerInterval); saveRecord(); setTimeout(() => { if (level === 9) { winScreen.style.display = "flex"; } else { alert(`Parabéns! Avançando para o nível ${level + 1}`); level++; hintUsed = false; createBoard(); startTimer(); } }, 500); } } else { erros++; updateScore(-2); updateHUD(); unflipCards(); } }
     function disableCards() {
       firstCard.removeEventListener('click', flipCard);
       secondCard.removeEventListener('click', flipCard);
@@ -334,11 +310,7 @@
       [firstCard, secondCard] = [null, null];
     }
 
-    function restartGame() {
-      level = 1;
-      winScreen.style.display = "none";
-      createBoard();
-    }
+function restartGame() { level = 1; score = 0; hintUsed = false; document.getElementById("score").textContent = "Pontuação: 0"; winScreen.style.display = "none"; createBoard(); startTimer(); }
 
     function changeCardBack() {
       currentBackIndex = (currentBackIndex + 1) % cardBacks.length;
@@ -400,7 +372,7 @@
       }, 2000); // mostra por 2 segundos
     }
 
-    createBoard();
+    loadRecord(); createBoard(); startTimer();
   </script>
 </body>
 </html>
